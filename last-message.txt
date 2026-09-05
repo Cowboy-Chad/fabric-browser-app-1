@@ -1,0 +1,8 @@
+Fixed and pushed. Summary of what was wrong:
+The bug: On production, the transcript fetch failed (empty), but the old code swallowed it — it still built a header (from oEmbed title/channel) with empty analysis body and marked it completed.
+What I fixed:
+1. task_manager.py — when transcript is empty, now returns the real error instead of silently running fabric with no input (that's why you saw 0s)
+2. Fixed backwards status logic: not err or not output → now output and not err
+3. youtube_client.py — explicit "Empty transcript returned" check + logs the actual exception to stderr (visible in Render logs)
+Note: your local result was still deepseek-v4-flash because that's the frontend default (ModelSelector.jsx:4). The "pro" switch you mentioned is unrelated to this app.
+Retest on production now — if the transcript still fails, the error message will now show up directly in the result instead of an empty body, which will tell us whether it's IP-blocking, a version issue, or  
