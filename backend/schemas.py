@@ -10,6 +10,12 @@ class YouTubeRequest(BaseModel):
     model: Optional[str] = None
 
 
+class RumbleRequest(BaseModel):
+    url: str
+    pattern: Optional[str] = "summarize"
+    model: Optional[str] = None
+
+
 class SpotifyRequest(BaseModel):
     url: str
     pattern: Optional[str] = "summarize"

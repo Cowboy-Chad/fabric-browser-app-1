@@ -4,10 +4,12 @@ import { ModelProvider } from './api/modelContext'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import MediaAnalysis from './pages/MediaAnalysis'
+import RumbleAnalysis from './pages/RumbleAnalysis'
+import RumbleHistory from './pages/RumbleHistory'
+import YouTubeHistory from './pages/YouTubeHistory'
 import SocialAnalysis from './pages/SocialAnalysis'
 import WebAnalysis from './pages/WebAnalysis'
 import History from './pages/History'
-
 function App() {
   const [dark, setDark] = useState(() => {
     if (typeof window === 'undefined') return false
@@ -31,9 +33,13 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/media" element={<MediaAnalysis />} />
+          <Route path="/youtube/history" element={<YouTubeHistory />} />
+          <Route path="/rumble" element={<RumbleAnalysis />} />
+          <Route path="/rumble/history" element={<RumbleHistory />} />
           <Route path="/social" element={<SocialAnalysis />} />
           <Route path="/web" element={<WebAnalysis />} />
           <Route path="/history" element={<History />} />
+          
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

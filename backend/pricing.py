@@ -1,6 +1,14 @@
-# OpenRouter pricing in USD per 1M tokens (input, output)
-# Free models have both at 0
-MODEL_PRICING = {
+import time
+import httpx
+from config import OPENROUTER_API_KEY
+
+LIVE_PRICING_URL = "https://openrouter.ai/api/v1/models"
+
+_live_pricing = None
+_last_fetch = 0.0
+_CACHE_TTL = 3600
+
+STATIC_PRICING = {
     "cohere/north-mini-code:free": (0, 0),
     "dots-studio/dots-3-note-preview:free": (0, 0),
     "google/gemma-4-26b-a4b-it:free": (0, 0),
@@ -77,10 +85,51 @@ MODEL_PRICING = {
 DEFAULT_PRICING = (1.00, 3.00)
 
 
-def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> tuple[float, float, float]:
-    pricing_key = model.replace("openrouter/", "", 1).lower()
-    input_price, output_price = MODEL_PRICING.get(pricing_key, DEFAULT_PRICING)
+def _normalise_key(model: str) -> str:
+    return model.replace("openrouter/", "", 1).lower()
+
+
+async def refresh_live_pricing():
+    global _live_pricing, _last_fetch
+    now = time.time()
+    if now - _last_fetch < _CACHE_TTL and _live_pricing is not None:
+        return
+    headers = {"Content-Type": "application/json"}
+    if OPENROUTER_API_KEY:
+        headers["Authorization"] = f"Bearer {OPENROUTER_API_KEY}"
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(LIVE_PRICING_URL, headers=headers)
+            resp.raise_for_status()
+            data = resp.json()
+    except Exception:
+        _live_pricing = None
+        _last_fetch = now
+        return
+    pricing = {}
+    for model in data.get("data", []):
+        mid = model.get("id", "")
+        p = model.get("pricing", {})
+        prompt = p.get("prompt")
+        completion = p.get("completion")
+        if prompt is not None and completion is not None:
+            pricing[mid.lower()] = (float(prompt) * 1_000_000, float(completion) * 1_000_000)
+    _live_pricing = pricing
+    _last_fetch = now
+
+
+def get_pricing(model: str) -> tuple[float, float, str]:
+    key = _normalise_key(model)
+    if _live_pricing and key in _live_pricing:
+        return (*_live_pricing[key], "OpenRouter API (live)")
+    if key in STATIC_PRICING:
+        return (*STATIC_PRICING[key], "local pricing table (static)")
+    return (*DEFAULT_PRICING, "local pricing table (static)")
+
+
+def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> tuple[float, float, float, str]:
+    input_price, output_price, source = get_pricing(model)
     input_cost = (input_tokens / 1_000_000) * input_price
     output_cost = (output_tokens / 1_000_000) * output_price
     total = input_cost + output_cost
-    return round(input_cost, 6), round(output_cost, 6), round(total, 6)
+    return round(input_cost, 6), round(output_cost, 6), round(total, 6), source

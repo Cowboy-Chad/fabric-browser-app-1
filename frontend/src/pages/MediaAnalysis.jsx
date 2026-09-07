@@ -1,21 +1,57 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../api/client'
 import { useModel } from '../api/modelContext'
-import { Clapperboard, Music, Upload } from 'lucide-react'
+import { Clapperboard, Music, Upload, Loader2, CheckCircle2, Search, Sparkles } from 'lucide-react'
 import FormattedOutput from '../components/FormattedOutput'
 import SavePdfButton from '../components/SavePdfButton'
 import OpenPdfButton from '../components/OpenPdfButton'
 import { CostBadge } from '../components/CostBadge'
 
-const patterns = ['youtube_summary', 'summarize', 'extract_wisdom', 'analyze_comments', 'create_tags', 'extract_insights']
+const patterns = ['youtube_summary', 'summarize', 'extract_wisdom', 'analyze_comments', 'create_tags', 'extract_insights', 'extract_ideas']
+
+function stepIcon(step) {
+  if (/checking/i.test(step) || /existing/i.test(step) || /history/i.test(step)) return <Search className="w-4 h-4" />
+  if (/transcrib/i.test(step)) return <Loader2 className="w-4 h-4" />
+  if (/analysis/i.test(step) || /fetch/i.test(step) || /saved/i.test(step)) return <Sparkles className="w-4 h-4" />
+  if (/complete/i.test(step)) return <CheckCircle2 className="w-4 h-4" />
+  return <CheckCircle2 className="w-4 h-4" />
+}
+
+function ProgressSteps({ steps, done }) {
+  if (steps.length === 0) return null
+  return (
+    <div className="mt-6 max-w-3xl border border-gray-200 dark:border-gray-800 rounded-lg p-4">
+      <p className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <Loader2 className="w-4 h-4 animate-spin text-emerald-500" />
+        Processing...
+      </p>
+      <ol className="flex flex-col gap-2">
+        {steps.map((step, idx) => {
+          const isCurrent = done ? false : idx === steps.length - 1
+          return (
+            <li key={idx} className="flex items-center gap-2 text-sm">
+              {isCurrent ? (
+                <Loader2 className="w-4 h-4 animate-spin text-emerald-500 shrink-0" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              )}
+              <span className={isCurrent ? 'font-medium' : 'text-gray-600 dark:text-gray-400'}>{step}</span>
+            </li>
+          )
+        })}
+      </ol>
+    </div>
+  )
+}
 
 export default function MediaAnalysis() {
   const { selected: selectedModel } = useModel()
   const [activeTab, setActiveTab] = useState('youtube')
   const [loading, setLoading] = useState(false)
-  const [resultId, setResultId] = useState(null)
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
+  const [steps, setSteps] = useState([])
+  const pollRef = useRef(null)
 
   const [youtubeUrl, setYoutubeUrl] = useState('')
   const [includeComments, setIncludeComments] = useState(false)
@@ -27,22 +63,53 @@ export default function MediaAnalysis() {
   const [file, setFile] = useState(null)
   const [filePattern, setFilePattern] = useState('summarize')
 
+  useEffect(() => () => {
+    if (pollRef.current) clearInterval(pollRef.current)
+  }, [])
+
+  const resetState = () => {
+    setResult(null); setError(''); setSteps([])
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }
+
+  const pollResult = (id) => {
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await api.getResult(id)
+        if (r.progress) {
+          setSteps((prev) => {
+            const last = prev[prev.length - 1]
+            return last === r.progress ? prev : [...prev, r.progress]
+          })
+        }
+        if (r.status === 'completed' || r.status === 'failed') {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+          setResult(r)
+          setLoading(false)
+        }
+      } catch {
+        clearInterval(pollRef.current)
+        pollRef.current = null
+        setLoading(false)
+      }
+    }, 1500)
+  }
+
   const handleYouTube = async (e) => {
     e.preventDefault()
-    setLoading(true); setError(''); setResult(null); setResultId(null)
+    setLoading(true); resetState()
     try {
       const data = await api.analyzeYouTube({ url: youtubeUrl, include_comments: includeComments, pattern: youtubePattern, model: selectedModel })
-      setResultId(data.result_id)
       pollResult(data.result_id)
     } catch (err) { setError(err.message); setLoading(false) }
   }
 
   const handleSpotify = async (e) => {
     e.preventDefault()
-    setLoading(true); setError(''); setResult(null); setResultId(null)
+    setLoading(true); resetState()
     try {
       const data = await api.analyzeSpotify({ url: spotifyUrl, pattern: spotifyPattern, model: selectedModel })
-      setResultId(data.result_id)
       pollResult(data.result_id)
     } catch (err) { setError(err.message); setLoading(false) }
   }
@@ -50,28 +117,14 @@ export default function MediaAnalysis() {
   const handleFileUpload = async (e) => {
     e.preventDefault()
     if (!file) return
-    setLoading(true); setError(''); setResult(null); setResultId(null)
+    setLoading(true); resetState()
     try {
       const fd = new FormData()
       fd.append('file', file)
       fd.append('model', selectedModel)
       const data = await api.transcribeFile(fd)
-      setResultId(data.result_id)
       pollResult(data.result_id)
     } catch (err) { setError(err.message); setLoading(false) }
-  }
-
-  const pollResult = async (id) => {
-    const interval = setInterval(async () => {
-      try {
-        const r = await api.getResult(id)
-        if (r.status === 'completed' || r.status === 'failed') {
-          clearInterval(interval)
-          setResult(r)
-          setLoading(false)
-        }
-      } catch { clearInterval(interval); setLoading(false) }
-    }, 2000)
   }
 
   const tabs = [
@@ -138,7 +191,15 @@ export default function MediaAnalysis() {
         </form>
       )}
 
-      {error && <p className="mt-4 text-sm text-red-500">{error}</p>}
+      {loading && !result && steps.length === 0 && (
+        <p className="mt-6 flex items-center gap-2 text-sm text-gray-500">
+          <Loader2 className="w-4 h-4 animate-spin" /> Starting analysis...
+        </p>
+      )}
+
+      {loading && steps.length > 0 && <ProgressSteps steps={steps} done={false} />}
+
+      {error && !loading && <p className="mt-4 text-sm text-red-500">{error}</p>}
       {result && (
         <div className="mt-6 max-w-3xl">
           <div className="flex items-center justify-between mb-2">

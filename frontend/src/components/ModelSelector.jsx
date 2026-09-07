@@ -32,7 +32,7 @@ export default function ModelSelector({ models, selected, onChange }) {
         </div>
       )}
       {open && (
-        <div className="absolute bottom-full mb-1 left-0 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
+        <div className="absolute bottom-full mb-1 left-0 min-w-max bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto z-50">
           {models.map((m) => (
             <button
               key={m}

@@ -36,6 +36,21 @@ export const api = {
   analyzeYouTube: (body) =>
     request('/media/youtube', { method: 'POST', body: JSON.stringify(body) }),
 
+  analyzeRumble: (body) =>
+    request('/media/rumble', { method: 'POST', body: JSON.stringify(body) }),
+
+  getRumbleHistory: (limit = 50) =>
+    request(`/media/rumble/history?limit=${limit}`),
+
+  getRumbleTranscript: (videoId) =>
+    request(`/media/rumble/history/${encodeURIComponent(videoId)}`),
+
+  getYouTubeHistory: (limit = 50) =>
+    request(`/media/youtube/history?limit=${limit}`),
+
+  getYouTubeTranscript: (videoId) =>
+    request(`/media/youtube/history/${encodeURIComponent(videoId)}`),
+
   analyzeSpotify: (body) =>
     request('/media/spotify', { method: 'POST', body: JSON.stringify(body) }),
 
@@ -69,4 +84,5 @@ export const api = {
     request(`/results?limit=${limit}&offset=${offset}`),
 
   getResult: (id) => request(`/results/${id}`),
-}
+
+  }

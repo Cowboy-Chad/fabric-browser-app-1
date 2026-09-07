@@ -30,7 +30,7 @@ export default function ResultCard({ result, onView, selectedId }) {
           </span>
         </div>
       </div>
-      <p className="text-sm font-medium truncate">{result.target}</p>
+      <p className="text-sm text-gray-400 truncate">{result.target}</p>
       {result.pattern && (
         <p className="text-xs text-gray-400 mt-1">Pattern: {result.pattern}</p>
       )}

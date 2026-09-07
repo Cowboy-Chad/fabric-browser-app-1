@@ -1,10 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFile, File, Form, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import get_session
-from schemas import YouTubeRequest, SpotifyRequest
-from models import AnalysisType
+from sqlalchemy import select
+from database import get_session, async_session
+from schemas import YouTubeRequest, SpotifyRequest, RumbleRequest
+from models import AnalysisType, RumbleTranscript, YouTubeTranscript
 from services.task_manager import run_analysis_task
-import os, shutil
+import os, shutil, uuid
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/api/media", tags=["Media Analysis"])
 
@@ -39,6 +41,25 @@ async def analyze_youtube(
     return {"result_id": result.id, "status": result.status.value}
 
 
+@router.get("/youtube/history")
+async def list_youtube_history(
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_session),
+):
+    stmt = select(YouTubeTranscript).order_by(YouTubeTranscript.created_at.desc()).limit(limit)
+    records = (await db.execute(stmt)).scalars().all()
+    return [r.to_dict() for r in records]
+
+
+@router.get("/youtube/history/{video_id}")
+async def get_youtube_history_item(video_id: str, db: AsyncSession = Depends(get_session)):
+    from services.youtube_client import get_youtube_history_transcript
+    record = await get_youtube_history_transcript(db, video_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No YouTube transcript found for video_id {video_id}")
+    return record.to_dict()
+
+
 @router.post("/spotify")
 async def analyze_spotify(
     req: SpotifyRequest,
@@ -50,6 +71,39 @@ async def analyze_spotify(
         model=getattr(req, 'model', None),
     )
     return {"result_id": result.id, "status": result.status.value}
+
+
+@router.post("/rumble")
+async def analyze_rumble(
+    req: RumbleRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_session),
+):
+    result = await run_analysis_task(
+        db, AnalysisType.RUMBLE, req.url, req.pattern,
+        rumble_url=req.url,
+        model=getattr(req, 'model', None),
+    )
+    return {"result_id": result.id, "status": result.status.value}
+
+
+@router.get("/rumble/history")
+async def list_rumble_history(
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_session),
+):
+    stmt = select(RumbleTranscript).order_by(RumbleTranscript.created_at.desc()).limit(limit)
+    records = (await db.execute(stmt)).scalars().all()
+    return [r.to_dict() for r in records]
+
+
+@router.get("/rumble/history/{video_id}")
+async def get_rumble_history_item(video_id: str, db: AsyncSession = Depends(get_session)):
+    from services.rumble_client import get_rumble_history_transcript
+    record = await get_rumble_history_transcript(db, video_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"No Rumble transcript found for video_id {video_id}")
+    return record.to_dict()
 
 
 @router.post("/transcribe")

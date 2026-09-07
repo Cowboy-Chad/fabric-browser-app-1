@@ -1,0 +1,9 @@
+Now i want to implement a major new feature on the left column that ends with the lines 'Social', 'Web & Domain' and 'History'. Just below History I want a 'YouTube Channels' button. For now I just want to show the channels that I've added to it from within the 'Add Channel' button in the Media page. Future features will be 'Analyze Latest' with a selector as to the number of videos to analyze and the patterns to use
+
+
+https://youtu.be/pvnOwoyENn8
+
+
+fabric -y https://youtu.be/8yB1008CLis -p extract_wisdom
+
+curl -fsSL https://raw.githubusercontent.com/danielmiessler/fabric/main/scripts/installer/install.sh | bash

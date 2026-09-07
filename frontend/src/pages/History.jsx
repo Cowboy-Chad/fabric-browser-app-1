@@ -46,8 +46,12 @@ export default function History() {
   }, [searchParams])
 
   const viewResult = (id) => {
-    api.getResult(id).then(setSelected)
-    setSearchParams({ selected: id })
+    if (selected?.id === id) {
+      closeDetail()
+    } else {
+      api.getResult(id).then(setSelected)
+      setSearchParams({ selected: id })
+    }
   }
 
   const closeDetail = () => {
@@ -64,58 +68,57 @@ export default function History() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          {loading ? (
-            <p className="text-gray-400">Loading...</p>
-          ) : results.length === 0 ? (
-            <p className="text-gray-400">No results yet.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {results.map((r) => (
-                <ResultCard key={r.id} result={r} onView={viewResult} selectedId={selected?.id} />
-              ))}
-            </div>
-          )}
-        </div>
-
-        {selected && (
-          <div className="border border-gray-200 dark:border-gray-800 rounded-lg p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold">Result Detail</h2>
-              <div className="flex items-center gap-2">
-                <OpenPdfButton text={selected.output_data || selected.error_message} />
-                <SavePdfButton text={selected.output_data || selected.error_message} title={selected.metadata_json ? JSON.parse(selected.metadata_json).video_title : ''} filename={`${selected.type}-${selected.target?.slice(0, 40)}`} />
-                <button onClick={closeDetail} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+      <div>
+        {loading ? (
+          <p className="text-gray-400">Loading...</p>
+        ) : results.length === 0 ? (
+          <p className="text-gray-400">No results yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {results.map((r) => (
+              <div key={r.id}>
+                <ResultCard result={r} onView={viewResult} selectedId={selected?.id} />
+                {selected?.id === r.id && (
+                  <div className="ml-4 border-l-2 border-emerald-400 dark:border-emerald-600 bg-gray-50 dark:bg-gray-900/50 rounded-r-lg p-4 mt-1 mb-2">
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="font-semibold text-sm">Result Detail</h2>
+                      <div className="flex items-center gap-2">
+                        <OpenPdfButton text={selected.output_data || selected.error_message} />
+                        <SavePdfButton text={selected.output_data || selected.error_message} title={selected.metadata_json ? JSON.parse(selected.metadata_json).video_title : ''} filename={`${selected.type}-${selected.target?.slice(0, 40)}`} />
+                        <button onClick={closeDetail} className="text-gray-400 hover:text-gray-600"><X className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Status:</span> {selected.status}
+                        <CostBadge result={selected} />
+                      </div>
+                      <p><span className="font-medium">Type:</span> {selected.type}</p>
+                      <p><span className="font-medium">Target:</span> {selected.target}</p>
+                      {selected.pattern && <p><span className="font-medium">Pattern:</span> {selected.pattern}</p>}
+                      {(() => { const m = parseMeta(selected); if (m.cost_estimate === undefined) return null; return (
+                        <>
+                          {m.input_tokens != null && <p><span className="font-medium">Tokens:</span> {m.input_tokens} in / {m.output_tokens} out</p>}
+                          {m.cost_estimate > 0 && <p><span className="font-medium">Cost:</span> {formatCost(m.cost_estimate)}</p>}
+                        </>
+                      )})()}
+                      {selected.raw_fabric_command && (
+                        <p><span className="font-medium">Command:</span> <code className="text-xs break-all">{selected.raw_fabric_command}</code></p>
+                      )}
+                      {selected.created_at && (
+                        <p><span className="font-medium">Created:</span> {new Date(selected.created_at).toLocaleString(undefined, { timeZoneName: 'short' })}</p>
+                      )}
+                    </div>
+                    <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
+                      <p className="font-semibold text-sm mb-1">Output:</p>
+                      <div className="bg-white dark:bg-gray-800 p-3 rounded max-h-96 overflow-y-auto">
+                        <FormattedOutput text={selected.output_data || selected.error_message || '(empty)'} />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="space-y-2 text-sm mb-3">
-              <div className="flex items-center gap-2">
-                <span className="font-medium">Status:</span> {selected.status}
-                <CostBadge result={selected} />
-              </div>
-              <p><span className="font-medium">Type:</span> {selected.type}</p>
-              <p><span className="font-medium">Target:</span> {selected.target}</p>
-              {selected.pattern && <p><span className="font-medium">Pattern:</span> {selected.pattern}</p>}
-              {(() => { const m = parseMeta(selected); if (m.cost_estimate === undefined) return null; return (
-                <>
-                  {m.input_tokens != null && <p><span className="font-medium">Tokens:</span> {m.input_tokens} in / {m.output_tokens} out</p>}
-                  {m.cost_estimate > 0 && <p><span className="font-medium">Cost:</span> {formatCost(m.cost_estimate)}</p>}
-                </>
-              )})()}
-              {selected.raw_fabric_command && (
-                <p><span className="font-medium">Command:</span> <code className="text-xs break-all">{selected.raw_fabric_command}</code></p>
-              )}
-              {selected.created_at && (
-                <p><span className="font-medium">Created:</span> {new Date(selected.created_at).toLocaleString(undefined, { timeZoneName: 'short' })}</p>
-              )}
-            </div>
-            <div className="border-t border-gray-200 dark:border-gray-800 pt-3">
-<p className="text-xs font-medium mb-1">Output:</p>
-            <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded max-h-96 overflow-y-auto">
-              <FormattedOutput text={selected.output_data || selected.error_message || '(empty)'} />
-            </div>
-            </div>
+            ))}
           </div>
         )}
       </div>

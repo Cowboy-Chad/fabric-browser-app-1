@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import {
-  LayoutDashboard, Clapperboard, Users, Globe, History, Binary
+  LayoutDashboard, Clapperboard, Users, Globe, History, Binary, Video, FileAudio, Youtube
 } from 'lucide-react'
 import { useModel } from '../api/modelContext'
 import ModelSelector from './ModelSelector'
@@ -8,10 +8,13 @@ import ModelSelector from './ModelSelector'
 const links = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/media', label: 'Media', icon: Clapperboard },
+  { to: '/youtube/history', label: 'YouTube History', icon: Youtube },
+  { to: '/rumble', label: 'Rumble', icon: Video },
+  { to: '/rumble/history', label: 'Rumble History', icon: FileAudio },
   { to: '/social', label: 'Social', icon: Users },
   { to: '/web', label: 'Web & Domain', icon: Globe },
   { to: '/history', label: 'History', icon: History },
-]
+  ]
 
 export default function Layout() {
   const { models, selected, changeModel } = useModel()
@@ -21,7 +24,7 @@ export default function Layout() {
       <aside className="w-56 border-r border-gray-200 dark:border-gray-800 p-4 flex flex-col">
         <div className="flex items-center gap-2 mb-8">
           <Binary className="w-6 h-6 text-emerald-500" />
-          <span className="font-bold text-lg">OSINT App 1</span>
+          <span className="font-bold text-lg">Fabric OSINT 1</span>
         </div>
         <nav className="flex flex-col gap-1 flex-1">
           {links.map(({ to, label, icon: Icon }) => (

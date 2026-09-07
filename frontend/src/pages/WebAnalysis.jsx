@@ -14,7 +14,7 @@ const tabs = [
   { key: 'logs', label: 'Log Analysis', icon: FileText },
 ]
 
-const patterns = ['summarize', 'extract_domains', 'analyze_threat_report', 'extract_insights', 'create_summary', 'analyze_logs']
+const patterns = ['summarize', 'extract_domains', 'analyze_threat_report', 'extract_insights', 'create_summary', 'analyze_logs', 'extract_ideas']
 
 export default function WebAnalysis() {
   const { selected: selectedModel } = useModel()
